@@ -1,0 +1,37 @@
+{
+  "model_config": {
+    "embedding_dim": 128,
+    "dropout_prob": 0.1,
+    "skip_connections": true,
+    "aggregation_fn": 1,
+    "num_mp_layers": 3
+  },
+  "hyperparameters": {
+    "learning_rate": 0.0001,
+    "num_epochs": 1,
+    "early_stopping_patience": 5
+  },
+  "training_results": {
+    "best_val_loss": 7675.8781444710185,
+    "best_epoch": 0,
+    "train_loss": 83609.38660927583,
+    "val_loss": 7675.8781444710185
+  },
+  "model_class": "nge",
+  "input_structure": {
+    "input_features_shape": [
+      5,
+      2
+    ],
+    "connection_matrix_shape": [
+      3,
+      5
+    ],
+    "input_features_dtype": "mlx.core.float32",
+    "connection_matrix_dtype": "mlx.core.float32"
+  },
+  "output_structure": {
+    "description": "Returns flattened tuple: (bfs_state_predictions, bf_distance_predictions, predesecor_predictions, termination_prob)",
+    "original_structure": "Original model returns ((bfs_state, bf_distance, predesecor), termination)"
+  }
+}
