@@ -144,11 +144,14 @@ class decoder(nn.Module):
         # softmax_denominator = mx.take(softmax_denominator, target_idx, axis=0)
 
         # edge_prob = edge_scores / (softmax_denominator + 1e-16)
-        edge_prob = mx.take(edge_scores, source_idx, axis=0)
+        # edge_prob = mx.take(edge_scores, target_idx, axis=0)
 
-        predesecor_predictions = mx.zeros([num_nodes, num_nodes])
+        # predesecor_predictions = mx.zeros([num_nodes, num_nodes])
+        # predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].add(edge_scores.squeeze)
 
-        predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].add(edge_prob.squeeze())
+        predesecor_predictions = mx.full([num_nodes, num_nodes], -1e9)
+        predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].multiply(0)
+        predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].add(edge_scores.squeeze())
 
         bfs_state_predictions = self.bfs_state_outputs(node_embeddings)
         bf_distance_predictions = nn.relu(self.bfs_distance_outputs(node_embeddings))

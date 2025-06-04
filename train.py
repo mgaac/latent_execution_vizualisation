@@ -156,7 +156,7 @@ class NGETrainer:
         best_epoch = 0
         patience_counter = 0
         
-        print("┌─ Training Progress")
+        print("╭─ Training Progress")
         
         for epoch in range(num_epochs):
             # Start epoch progress bar

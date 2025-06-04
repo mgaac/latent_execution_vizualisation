@@ -143,11 +143,12 @@ class SimpleLogger:
         self.train_metrics.append(train_metrics)
         self.val_metrics.append(val_metrics)
         
-        # Print epoch summary with elegant formatting
+        # Print epoch summary with elegant formatting and aligned dividers
         print(f"│  Epoch {epoch + 1}")
-        print(f"│    Losses      Train: {train_loss:.4f}  │  Val: {val_loss:.4f}")
+        print(f"│    Losses      Train: {train_loss:.4f}  │  Val: {val_loss:.4f}   │                │")
         
-        # Print component-wise losses if available
+        
+        # Print component-wise losses if available with aligned dividers
         if train_losses:
             state_loss = train_losses.get('state_loss', 0)
             pred_loss = train_losses.get('pred_loss', 0)
@@ -162,7 +163,7 @@ class SimpleLogger:
             dist_loss = val_losses.get('distance_loss', 0)
             print(f"│    Val Loss    State: {state_loss:.4f}  │  Pred: {pred_loss:.4f}  │  Term: {term_loss:.4f}  │  Dist: {dist_loss:.4f}")
         
-        # Print accuracy metrics if available
+        # Print accuracy metrics if available with aligned dividers
         if train_metrics:
             state_acc = train_metrics.get('state_acc', 0)
             pred_acc = train_metrics.get('pred_acc', 0)

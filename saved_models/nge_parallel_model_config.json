@@ -1,21 +1,21 @@
 {
   "model_config": {
     "embedding_dim": 128,
-    "dropout_prob": 0.1,
+    "dropout_prob": 0.5,
     "skip_connections": true,
-    "aggregation_fn": 1,
+    "aggregation_fn": 5,
     "num_mp_layers": 3
   },
   "hyperparameters": {
-    "learning_rate": 0.0001,
-    "num_epochs": 1,
-    "early_stopping_patience": 5
+    "learning_rate": 0.0005,
+    "num_epochs": 100,
+    "early_stopping_patience": 10
   },
   "training_results": {
-    "best_val_loss": 7675.8781444710185,
-    "best_epoch": 0,
-    "train_loss": 83609.38660927583,
-    "val_loss": 7675.8781444710185
+    "best_val_loss": 3.186901976572242,
+    "best_epoch": 23,
+    "train_loss": 2.763187914583841,
+    "val_loss": 3.196630910578229
   },
   "model_class": "nge",
   "input_structure": {

@@ -19,14 +19,14 @@ MODEL_CONFIG = {
     'dropout_prob': 0.5,
     'skip_connections': True,
     'aggregation_fn': aggregation_fn.MAX,
-    'num_mp_layers': 2
+    'num_mp_layers': 3
 }
 
 # Training Hyperparameters
 HYPERPARAMETERS = {
     'learning_rate': 0.0005,
     'num_epochs': 100,
-    'early_stopping_patience': 30
+    'early_stopping_patience': 10
 }
 
 # Paths
@@ -37,7 +37,7 @@ DATASET_PATH = "dataset"
 
 def load_dataset(dataset_path):
     """Load training and validation datasets"""
-    print(f"┌─ Loading datasets from {dataset_path}")
+    print(f"╭─ Loading datasets from {dataset_path}")
     
     dataset_path_obj = Path(dataset_path)
     with open(dataset_path_obj / "train_graphs.pkl", "rb") as f:
@@ -176,15 +176,16 @@ def load_model(save_path, model_filename=MODEL_FILENAME):
 
 def main():
     """Main training function"""
-    print("─" * 60)
-    print(" Neural Graph Executor Training")
-    print("─" * 60 + "\n")
+    print("╭─" + "─" * 30 + "─╮")
+    print("│ Neural Graph Executor Training │")
+    print("╰─" + "─" * 30 + "─╯")
+    print()
     
     # Load datasets
     train_dataset, val_dataset = load_dataset(DATASET_PATH)
     
     # Create trainer
-    print("\n┌─ Model Setup")
+    print("\n╭─ Model Setup")
     trainer = create_trainer(MODEL_CONFIG, learning_rate=HYPERPARAMETERS['learning_rate'])
     
     # Print model information
@@ -194,7 +195,7 @@ def main():
     logger = SimpleLogger(debug=False)
     
     # Start training
-    print("\n┌─ Training Configuration")
+    print("\n╭─ Training Configuration")
     print(f"│  Epochs: {HYPERPARAMETERS['num_epochs']}")
     print(f"│  Early stopping patience: {HYPERPARAMETERS['early_stopping_patience']}")
     print(f"│  Learning rate: {HYPERPARAMETERS['learning_rate']}")
@@ -209,7 +210,7 @@ def main():
     )
     
     # Save the trained model
-    print("\n┌─ Model Export")
+    print("\n╭─ Model Export")
     save_model(trainer, MODEL_CONFIG, HYPERPARAMETERS, results, MODEL_SAVE_PATH)
 
 if __name__ == "__main__":
