@@ -322,8 +322,10 @@ def generate_targets(graph, start, task_type):
     if task_type == task.PARALLEL_ALGORIHTM:
         bfs = bfs_edge_list(graph, start)
         bf = bellman_ford_edge_list(graph, start)
-        bf_dist = mx.array([list(h['distance'].values()) for h in bf])
-        bf_pred = mx.array([list(h['predecessor'].values()) for h in bf])
+
+        sorted_nodes = sorted(bf[0]['distance'].keys()) if bf else []
+        bf_dist = mx.array([[h['distance'][n] for n in sorted_nodes] for h in bf])
+        bf_pred = mx.array([[h['predecessor'][n] for n in sorted_nodes] for h in bf])
         
         # Convert BFS state to one-hot and add termination targets
         bfs_state_one_hot = binary_to_one_hot(bfs)
