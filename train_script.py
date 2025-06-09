@@ -10,22 +10,22 @@ from pathlib import Path
 
 from model import aggregation_fn
 from train import create_trainer
-from nge_utils import SimpleLogger, print_model_info
+from nge_utils import SimpleLogger
 
 
 # Model Configuration
 MODEL_CONFIG = {
-    'embedding_dim': 128,
-    'dropout_prob': 0.5,
+    'embedding_dim': 32,
+    'dropout_prob': 0.1,
     'skip_connections': True,
     'aggregation_fn': aggregation_fn.MAX,
-    'num_mp_layers': 3
+    'num_mp_layers': 2
 }
 
 # Training Hyperparameters
 HYPERPARAMETERS = {
     'learning_rate': 0.0005,
-    'num_epochs': 100,
+    'num_epochs': 30,
     'early_stopping_patience': 10
 }
 
@@ -36,22 +36,42 @@ DATASET_PATH = "dataset"
 
 
 def load_dataset(dataset_path):
-    """Load training and validation datasets"""
-    print(f"╭─ Loading datasets from {dataset_path}")
+    """Load training, validation, and test datasets"""
+    # print(f"\n╭─ Loading datasets from {dataset_path}")
     
     dataset_path_obj = Path(dataset_path)
     with open(dataset_path_obj / "train_graphs.pkl", "rb") as f:
         train_dataset = pickle.load(f)
-    with open(dataset_path_obj / "val_graphs.pkl", "rb") as f:
+    
+    # Check for val_graphs.pkl in dataset directory first, then root
+    val_file_path = dataset_path_obj / "val_graphs.pkl"
+    if not val_file_path.exists():
+        val_file_path = Path("val_graphs.pkl")
+    
+    with open(val_file_path, "rb") as f:
         val_dataset = pickle.load(f)
     
-    print(f"│  ✓ {len(train_dataset)} training graphs, {len(val_dataset)} validation graphs")
-
-    return train_dataset, val_dataset
+    # Load test datasets
+    test_datasets = {}
+    test_files = ["test_graphs_20.pkl", "test_graphs_50.pkl", "test_graphs_100.pkl"]
+    
+    for test_file in test_files:
+        test_path = dataset_path_obj / test_file
+        if test_path.exists():
+            with open(test_path, "rb") as f:
+                test_dataset = pickle.load(f)
+                # Extract the size from filename for cleaner naming
+                size = test_file.replace("test_graphs_", "").replace(".pkl", "")
+                test_datasets[f"test_{size}"] = test_dataset
+                # print(f"│  ✓ {len(test_dataset)} test graphs ({size} graphs)")
+    
+    # print(f"│  ✓ {len(train_dataset)} training graphs, {len(val_dataset)} validation graphs")
+    
+    return train_dataset, val_dataset, test_datasets
 
 
 def save_model(trainer, model_config, hyperparameters, results, save_path):
-    """Save the trained model using MLX export_function with shapeless support"""
+    """Save the trained model weights using MLX save_weights"""
     # Create save directory if it doesn't exist
     save_path_obj = Path(save_path)
     save_path_obj.mkdir(parents=True, exist_ok=True)
@@ -60,52 +80,18 @@ def save_model(trainer, model_config, hyperparameters, results, save_path):
     print("│  Evaluating computation graph...")
     mx.eval(trainer.model.parameters())
     
-    # Create example inputs for export (matching your NGE model structure)
-    # These should match the typical input shapes and dtypes your model expects
-    dummy_input_features = mx.zeros((5, 2), dtype=mx.float32)  # [num_nodes, num_features]
-    dummy_connection_matrix = mx.zeros((3, 5), dtype=mx.float32)  # [connections, nodes]
-    
-    # Export the model using MLX's export_function with shapeless=True
-    export_file = str(save_path_obj / f"{MODEL_FILENAME}.mlxfn")
-
-    #Generate export function
-    model = trainer.model
-    mx.eval(model.parameters())
-
-    def model_export_fn(input_features, connection_matrix):
-        # The model returns (output, termination_prob) where output is a tuple
-        # For parallel algorithms: output = (bfs_state_predictions, bf_distance_predictions, predesecor_predictions)
-        # We need to flatten this to a flat tuple of arrays for export_function
-        (output, termination_prob) = model((input_features, connection_matrix))
-        bfs_state_predictions, bf_distance_predictions, predesecor_predictions = output
-        return (bfs_state_predictions, bf_distance_predictions, predesecor_predictions, termination_prob)
-    
-    print("│  Exporting model with shapeless support...")
-    mx.export_function(
-        export_file, 
-        model_export_fn, 
-        dummy_input_features, 
-        dummy_connection_matrix,
-        shapeless=True  # Enable shapeless export for variable input sizes
-    )
-    print(f"│  ✓ Model exported: {MODEL_FILENAME}.mlxfn")
+    # Save model weights
+    weights_file = str(save_path_obj / f"{MODEL_FILENAME}.npz")
+    print("│  Saving model weights...")
+    trainer.model.save_weights(weights_file)
+    print(f"│  ✓ Model weights saved: {MODEL_FILENAME}.npz")
     
     # Save configuration and metadata
     metadata = {
         'model_config': model_config,
         'hyperparameters': hyperparameters,
         'training_results': results,
-        'model_class': 'nge',
-        'input_structure': {
-            'input_features_shape': list(dummy_input_features.shape),
-            'connection_matrix_shape': list(dummy_connection_matrix.shape),
-            'input_features_dtype': str(dummy_input_features.dtype),
-            'connection_matrix_dtype': str(dummy_connection_matrix.dtype)
-        },
-        'output_structure': {
-            'description': 'Returns flattened tuple: (bfs_state_predictions, bf_distance_predictions, predesecor_predictions, termination_prob)',
-            'original_structure': 'Original model returns ((bfs_state, bf_distance, predesecor), termination)'
-        }
+        'model_class': 'nge'
     }
     
     config_file = str(save_path_obj / f"{MODEL_FILENAME}_config.json")
@@ -140,13 +126,16 @@ def save_model(trainer, model_config, hyperparameters, results, save_path):
 def load_model(save_path, model_filename=MODEL_FILENAME):
     """Load a saved model (for inference or continued training)"""
     save_path_obj = Path(save_path)
-    export_file = str(save_path_obj / f"{model_filename}.mlxfn")
     config_file = str(save_path_obj / f"{model_filename}_config.json")
     weights_file = str(save_path_obj / f"{model_filename}.npz")
     
     config_file_path = Path(config_file)
     if not config_file_path.exists():
         raise FileNotFoundError(f"Model config file not found: {config_file}")
+    
+    weights_file_path = Path(weights_file)
+    if not weights_file_path.exists():
+        raise FileNotFoundError(f"Model weights file not found: {weights_file}")
     
     # Load configuration
     with open(config_file, 'r') as f:
@@ -156,21 +145,16 @@ def load_model(save_path, model_filename=MODEL_FILENAME):
     model_config = metadata['model_config'].copy()
     model_config['aggregation_fn'] = aggregation_fn(model_config['aggregation_fn'])
     
-    imported_fn = mx.import_function(export_file)
+    # Create model instance
+    from model import nge
+    model = nge(**model_config)
     
-    # Create a wrapper that reconstructs the original output structure
-    def model_inference_fn(input_features, connection_matrix):
-        """
-        Wrapper that calls the imported function and reconstructs the original output structure.
-        Returns: ((bfs_state_predictions, bf_distance_predictions, predesecor_predictions), termination_prob)
-        """
-        flat_output = imported_fn(input_features, connection_matrix)
-        bfs_state_predictions, bf_distance_predictions, predesecor_predictions, termination_prob = flat_output
-        output = (bfs_state_predictions, bf_distance_predictions, predesecor_predictions)
-        return (output, termination_prob)
+    # Load weights
+    # print("│  Loading model weights...")
+    model.load_weights(weights_file)
+    # print(f"│  ✓ Model weights loaded: {model_filename}.npz")
     
-    print(f"│  ✓ Model loaded: {model_filename}.mlxfn")
-    return model_inference_fn, metadata
+    return model, metadata
 
 
 
@@ -181,17 +165,11 @@ def main():
     print("╰─" + "─" * 30 + "─╯")
     print()
     
-    # Load datasets
-    train_dataset, val_dataset = load_dataset(DATASET_PATH)
+
+    train_dataset, val_dataset, test_datasets = load_dataset(DATASET_PATH)
     
-    # Create trainer
-    print("\n╭─ Model Setup")
     trainer = create_trainer(MODEL_CONFIG, learning_rate=HYPERPARAMETERS['learning_rate'])
     
-    # Print model information
-    print_model_info(trainer.model)
-    
-    # Create logger
     logger = SimpleLogger(debug=False)
     
     # Start training
@@ -212,6 +190,20 @@ def main():
     # Save the trained model
     print("\n╭─ Model Export")
     save_model(trainer, MODEL_CONFIG, HYPERPARAMETERS, results, MODEL_SAVE_PATH)
+    
+    # Evaluate on test datasets
+    if test_datasets:
+        print("\n╭─ Test Dataset Evaluation")
+        test_results = trainer.evaluate_on_test_sets(test_datasets, logger)
+        
+        # Add test results to the results dictionary and save updated config
+        results['test_results'] = test_results
+        
+        # Re-save the model with test results included
+        save_model(trainer, MODEL_CONFIG, HYPERPARAMETERS, results, MODEL_SAVE_PATH)
+        
+        print("│  Test evaluation complete!")
+        print("╰─" + "─" * 30 + "─╯")
 
 if __name__ == "__main__":
     # Set random seed for reproducibility

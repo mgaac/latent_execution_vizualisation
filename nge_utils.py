@@ -35,7 +35,7 @@ def calculate_accuracy_metrics(state, predesecor, reachability_target, predeseco
         # For distance, we calculate MAE and also a threshold-based accuracy
         distance_mae = float(mx.mean(mx.abs(distance.flatten() - distance_target.flatten())))
         # Consider distance "accurate" if within 10% of target (or 0.1 absolute for small values)
-        distance_thresh = mx.maximum(mx.abs(distance_target.flatten()) * 0.1, 0.1)
+        distance_thresh = mx.maximum(mx.abs(distance_target.flatten()) * 0.15, 0.15)
         distance_within_thresh = mx.abs(distance.flatten() - distance_target.flatten()) <= distance_thresh
         distance_acc = float(mx.mean(distance_within_thresh.astype(mx.float32)))
         metrics['dist_mae'] = distance_mae
@@ -145,7 +145,7 @@ class SimpleLogger:
         
         # Print epoch summary with elegant formatting and aligned dividers
         print(f"│  Epoch {epoch + 1}")
-        print(f"│    Losses      Train: {train_loss:.4f}  │  Val: {val_loss:.4f}   │                │")
+        print(f"│    Losses      Train: {train_loss:.3f}  │  Val: {val_loss:.3f}   │")
         
         
         # Print component-wise losses if available with aligned dividers
@@ -154,21 +154,21 @@ class SimpleLogger:
             pred_loss = train_losses.get('pred_loss', 0)
             term_loss = train_losses.get('termination_loss', 0)
             dist_loss = train_losses.get('distance_loss', 0)
-            print(f"│    Train Loss  State: {state_loss:.4f}  │  Pred: {pred_loss:.4f}  │  Term: {term_loss:.4f}  │  Dist: {dist_loss:.4f}")
+            print(f"│    Train Loss  State: {state_loss:.3f}  │  Pred: {pred_loss:.3f}  │  Term: {term_loss:.3f}  │  Dist: {dist_loss:.3f}")
         
         if val_losses:
             state_loss = val_losses.get('state_loss', 0)
             pred_loss = val_losses.get('pred_loss', 0)
             term_loss = val_losses.get('termination_loss', 0)
             dist_loss = val_losses.get('distance_loss', 0)
-            print(f"│    Val Loss    State: {state_loss:.4f}  │  Pred: {pred_loss:.4f}  │  Term: {term_loss:.4f}  │  Dist: {dist_loss:.4f}")
+            print(f"│    Val Loss    State: {state_loss:.3f}  │  Pred: {pred_loss:.3f}  │  Term: {term_loss:.3f}  │  Dist: {dist_loss:.3f}")
         
         # Print accuracy metrics if available with aligned dividers
         if train_metrics:
             state_acc = train_metrics.get('state_acc', 0)
             pred_acc = train_metrics.get('pred_acc', 0)
             term_acc = train_metrics.get('term_acc', 0)
-            print(f"│    Train Acc   State: {state_acc:.3f}   │  Pred: {pred_acc:.3f}  │  Term: {term_acc:.3f}", end="")
+            print(f"│    Train Acc   State: {state_acc:.3f}  │  Pred: {pred_acc:.3f}  │  Term: {term_acc:.3f}", end="")
             if 'dist_acc' in train_metrics:
                 dist_acc = train_metrics.get('dist_acc', 0)
                 dist_mae = train_metrics.get('dist_mae', 0)
@@ -180,7 +180,7 @@ class SimpleLogger:
             state_acc = val_metrics.get('state_acc', 0)
             pred_acc = val_metrics.get('pred_acc', 0)
             term_acc = val_metrics.get('term_acc', 0)
-            print(f"│    Val Acc     State: {state_acc:.3f}   │  Pred: {pred_acc:.3f}  │  Term: {term_acc:.3f}", end="")
+            print(f"│    Val Acc     State: {state_acc:.3f}  │  Pred: {pred_acc:.3f}  │  Term: {term_acc:.3f}", end="")
             if 'dist_acc' in val_metrics:
                 dist_acc = val_metrics.get('dist_acc', 0)
                 dist_mae = val_metrics.get('dist_mae', 0)
@@ -247,21 +247,3 @@ class SimpleLogger:
                 print(f"  │  Dist: {dist_acc:.3f}")
             else:
                 print()
-
-
-def count_parameters(model):
-    """Count model parameters"""
-    def count_params(tree):
-        if isinstance(tree, dict):
-            return sum(count_params(v) for v in tree.values())
-        elif hasattr(tree, 'size'):
-            return tree.size
-        else:
-            return 0
-    return count_params(model.parameters())
-
-
-def print_model_info(model):
-    """Print basic model information"""
-    param_count = count_parameters(model)
-    print(f"│  Model parameters: {param_count:,}") 

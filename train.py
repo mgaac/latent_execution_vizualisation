@@ -84,7 +84,7 @@ class NGETrainer:
         total_loss = 0.0
         valid_graphs = 0
         
-        for graph_idx, graph_data in enumerate(dataset):
+        for graph_data in dataset:
             execution_history = graph_data['targets']['parallel']
             state_key = 'bfs_state'
             pred_key = 'bf_predecessor'

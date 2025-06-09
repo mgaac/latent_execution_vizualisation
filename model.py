@@ -33,8 +33,9 @@ class mp_layer(nn.Module):
 
         num_nodes = node_embeddings.shape[0]
         
-        mask = mx.random.bernoulli(self.dropout_prob, connection_matrix.shape)
-        connection_matrix = connection_matrix * mask
+        if self.train is True:
+            mask = mx.random.bernoulli(self.dropout_prob, connection_matrix.shape)
+            connection_matrix = connection_matrix * mask
 
         edge_weights = mx.expand_dims(connection_matrix[2], axis=0)
         edge_weights = mx.expand_dims(edge_weights, axis=-1)
@@ -135,21 +136,23 @@ class decoder(nn.Module):
 
         concatenated_embeddings = mx.concat([source_embeddings, target_embeddings], axis=1)
 
-        edge_scores = self.predesecor_prob(concatenated_embeddings).squeeze()
+        edge_scores = self.predesecor_prob(concatenated_embeddings)
+        # edge_scores = (edge_scores - edge_scores.max()).exp()
 
-        # Softmax over incoming edges per target node
-        max_scores = mx.full([num_nodes], -1e9)
-        max_scores = max_scores.at[target_idx].maximum(edge_scores)
-        normalized_scores = edge_scores - mx.take(max_scores, target_idx)
-        exp_scores = mx.exp(normalized_scores)
+        # softmax_denominator = mx.zeros([num_nodes, 1])
 
-        denom = mx.zeros([num_nodes])
-        denom = denom.at[target_idx].add(exp_scores)
-        softmax_denom = mx.take(denom, target_idx)
-        edge_prob = exp_scores / (softmax_denom + 1e-16)
+        # softmax_denominator = softmax_denominator.at[target_idx].add(edge_scores)
+        # softmax_denominator = mx.take(softmax_denominator, target_idx, axis=0)
 
-        predesecor_predictions = mx.zeros([num_nodes, num_nodes])
-        predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].add(edge_prob)
+        # edge_prob = edge_scores / (softmax_denominator + 1e-16)
+        # edge_prob = mx.take(edge_scores, target_idx, axis=0)
+
+        # predesecor_predictions = mx.zeros([num_nodes, num_nodes])
+        # predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].add(edge_scores.squeeze)
+
+        predesecor_predictions = mx.full([num_nodes, num_nodes], -1e9)
+        predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].multiply(0)
+        predesecor_predictions = predesecor_predictions.at[target_idx, source_idx].add(edge_scores.squeeze())
 
         bfs_state_predictions = self.bfs_state_outputs(node_embeddings)
         bf_distance_predictions = nn.relu(self.bfs_distance_outputs(node_embeddings))
